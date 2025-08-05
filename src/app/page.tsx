@@ -4,7 +4,6 @@ import { useState } from 'react';
 import ImageUpload from '@/components/image-converter/ImageUpload';
 import FormatSelector from '@/components/image-converter/FormatSelector';
 import ConversionControls from '@/components/image-converter/ConversionControls';
-import Preview from '@/components/image-converter/Preview';
 import DownloadSection from '@/components/image-converter/DownloadSection';
 
 export default function ImageConverter() {
@@ -176,11 +175,12 @@ export default function ImageConverter() {
 
           {/* Download */}
           <section>
-            <DownloadSection 
+            <DownloadSection
               convertedImageUrl={convertedImageUrl}
               selectedFormat={selectedFormat}
-              originalFileName={null}
+              originalFileName={selectedFiles.length === 1 ? selectedFiles[0]?.name || null : null}
               isConverting={isConverting}
+              fileCount={selectedFiles.length}
             />
           </section>
         </div>

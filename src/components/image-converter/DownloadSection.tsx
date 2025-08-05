@@ -5,19 +5,27 @@ interface DownloadSectionProps {
   selectedFormat: 'avif' | 'webp';
   originalFileName: string | null;
   isConverting: boolean;
+  fileCount: number;
 }
 
-export default function DownloadSection({ 
-  convertedImageUrl, 
-  selectedFormat, 
+export default function DownloadSection({
+  convertedImageUrl,
+  selectedFormat,
   originalFileName,
-  isConverting 
+  isConverting,
+  fileCount
 }: DownloadSectionProps) {
   const getDownloadFileName = () => {
-    if (!originalFileName) return `converted.${selectedFormat}`;
-    
+    // For multiple files, always use ZIP filename
+    if (fileCount > 1) {
+      return 'converted_images.zip';
+    }
+
+    // For single file, use original logic but still ZIP format since API always returns ZIP
+    if (!originalFileName) return `converted.zip`;
+
     const nameWithoutExtension = originalFileName.replace(/\.[^/.]+$/, '');
-    return `${nameWithoutExtension}.${selectedFormat}`;
+    return `${nameWithoutExtension}.zip`;
   };
 
   if (isConverting) {
@@ -27,7 +35,9 @@ export default function DownloadSection({
         <div className="flex items-center justify-center p-8 border rounded-lg bg-secondary/20">
           <div className="text-center space-y-2">
             <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
-            <p className="text-sm text-muted-foreground">Converting image...</p>
+            <p className="text-sm text-muted-foreground">
+              Converting {fileCount === 1 ? 'image' : `${fileCount} images`}...
+            </p>
           </div>
         </div>
       </div>
@@ -40,7 +50,7 @@ export default function DownloadSection({
         <h3 className="text-lg font-semibold">Download</h3>
         <div className="flex items-center justify-center p-8 border rounded-lg bg-secondary/20">
           <p className="text-sm text-muted-foreground">
-            Upload an image and convert it to download
+            Upload {fileCount === 1 ? 'an image' : 'images'} and convert {fileCount === 1 ? 'it' : 'them'} to download
           </p>
         </div>
       </div>
@@ -53,10 +63,10 @@ export default function DownloadSection({
       <div className="flex flex-col items-center space-y-4 p-6 border rounded-lg bg-secondary/20">
         <div className="text-center space-y-2">
           <p className="text-sm font-medium">
-            Your image has been converted to {selectedFormat.toUpperCase()}
+            Your {fileCount === 1 ? 'image has' : `${fileCount} images have`} been converted to {selectedFormat.toUpperCase()}
           </p>
           <p className="text-xs text-muted-foreground">
-            Click the button below to download your converted image
+            Click the button below to download your converted {fileCount === 1 ? 'image' : 'images'}
           </p>
         </div>
         
@@ -65,7 +75,10 @@ export default function DownloadSection({
           download={getDownloadFileName()}
           className="inline-flex items-center justify-center px-6 py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
         >
-          Download {selectedFormat.toUpperCase()} Image
+          {fileCount === 1
+            ? `Download ${selectedFormat.toUpperCase()} Image`
+            : `Download ZIP File (${fileCount} ${selectedFormat.toUpperCase()} Images)`
+          }
         </a>
         
         <div className="text-xs text-muted-foreground text-center">
