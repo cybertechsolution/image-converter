@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import HydrationProvider from '@/components/HydrationProvider'
+import { Toaster } from '@/components/ui/sonner'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -22,6 +23,7 @@ export default function RootLayout({
           <div className="min-h-screen bg-background text-foreground">
             {children}
           </div>
+          <Toaster />
         </HydrationProvider>
       </body>
     </html>

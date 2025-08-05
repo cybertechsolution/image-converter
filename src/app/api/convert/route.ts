@@ -18,6 +18,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate file types
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    for (const file of files) {
+      if (!allowedTypes.includes(file.type)) {
+        return NextResponse.json(
+          { error: `Invalid file type: ${file.name}. Only JPEG, JPG, and PNG files are allowed.` },
+          { status: 400 }
+        );
+      }
+    }
+
     if (!['avif', 'webp'].includes(format)) {
       return NextResponse.json(
         { error: 'Invalid format. Only AVIF and WebP are supported.' },
@@ -32,26 +43,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create a PassThrough stream to pipe the ZIP archive
-    const zipStream = new PassThrough();
-
-    // Create the archive
-    const archive = archiver('zip', {
-      zlib: { level: 9 }
-    });
-
-    // Pipe archive data to the stream
-    archive.pipe(zipStream);
-
-    // Process each file and append to archive
-    for (const file of files) {
+    // Handle single file vs multiple files
+    if (files.length === 1) {
+      // Single file - return the converted file directly
+      const file = files[0];
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
       let convertedBuffer;
       if (format === 'avif') {
         convertedBuffer = await sharp(buffer)
-          .avif({ quality })
+          .avif({
+            quality,
+            effort: 4 // Better compression for AVIF
+          })
           .toBuffer();
       } else {
         convertedBuffer = await sharp(buffer)
@@ -64,30 +69,75 @@ export async function POST(request: NextRequest) {
       const baseName = originalName.replace(/\.[^/.]+$/, '');
       const convertedFileName = `${baseName}.${format}`;
 
-      // Append converted file to archive
-      archive.append(convertedBuffer, { name: convertedFileName });
-    }
+      // Return single file directly
+      return new NextResponse(convertedBuffer, {
+        status: 200,
+        headers: {
+          'Content-Type': format === 'avif' ? 'image/avif' : 'image/webp',
+          'Content-Disposition': `attachment; filename="${convertedFileName}"`,
+        },
+      });
+    } else {
+      // Multiple files - return as ZIP
+      const zipStream = new PassThrough();
 
-    // Finalize the archive
-    await archive.finalize();
+      // Create the archive
+      const archive = archiver('zip', {
+        zlib: { level: 9 }
+      });
 
-    // Convert PassThrough stream to ReadableStream for Next.js
-    const readableStream = new ReadableStream({
-      start(controller) {
-        zipStream.on('data', (chunk) => controller.enqueue(chunk));
-        zipStream.on('end', () => controller.close());
-        zipStream.on('error', (err) => controller.error(err));
+      // Pipe archive data to the stream
+      archive.pipe(zipStream);
+
+      // Process each file and append to archive
+      for (const file of files) {
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        let convertedBuffer;
+        if (format === 'avif') {
+          convertedBuffer = await sharp(buffer)
+            .avif({
+              quality,
+              effort: 4 // Better compression for AVIF
+            })
+            .toBuffer();
+        } else {
+          convertedBuffer = await sharp(buffer)
+            .webp({ quality })
+            .toBuffer();
+        }
+
+        // Determine filename for converted file
+        const originalName = file.name || 'file';
+        const baseName = originalName.replace(/\.[^/.]+$/, '');
+        const convertedFileName = `${baseName}.${format}`;
+
+        // Append converted file to archive
+        archive.append(convertedBuffer, { name: convertedFileName });
       }
-    });
 
-    // Return the ZIP archive as a stream response
-    return new NextResponse(readableStream, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/zip',
-        'Content-Disposition': `attachment; filename="converted_images.zip"`,
-      },
-    });
+      // Finalize the archive
+      await archive.finalize();
+
+      // Convert PassThrough stream to ReadableStream for Next.js
+      const readableStream = new ReadableStream({
+        start(controller) {
+          zipStream.on('data', (chunk) => controller.enqueue(chunk));
+          zipStream.on('end', () => controller.close());
+          zipStream.on('error', (err) => controller.error(err));
+        }
+      });
+
+      // Return the ZIP archive as a stream response
+      return new NextResponse(readableStream, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/zip',
+          'Content-Disposition': `attachment; filename="converted_images.zip"`,
+        },
+      });
+    }
 
   } catch (error) {
     console.error('Image conversion error:', error);

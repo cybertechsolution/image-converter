@@ -5,6 +5,7 @@ import ImageUpload from '@/components/image-converter/ImageUpload';
 import FormatSelector from '@/components/image-converter/FormatSelector';
 import ConversionControls from '@/components/image-converter/ConversionControls';
 import DownloadSection from '@/components/image-converter/DownloadSection';
+import { toast } from 'sonner';
 
 export default function ImageConverter() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -16,13 +17,13 @@ export default function ImageConverter() {
 
   const handleConvert = async () => {
     if (selectedFiles.length === 0) {
-      setError('Please select at least one image file first');
+      toast.error('Please select at least one image file first');
       return;
     }
 
     setIsConverting(true);
     setError(null);
-    
+
     // Clear previous converted image
     if (convertedImageUrl) {
       URL.revokeObjectURL(convertedImageUrl);
@@ -30,6 +31,8 @@ export default function ImageConverter() {
     }
 
     try {
+      toast.loading('Converting images...', { id: 'conversion' });
+
       const formData = new FormData();
       selectedFiles.forEach((file) => {
         formData.append('file', file);
@@ -50,8 +53,15 @@ export default function ImageConverter() {
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       setConvertedImageUrl(url);
+
+      toast.success(
+        `Successfully converted ${selectedFiles.length} image${selectedFiles.length > 1 ? 's' : ''} to ${selectedFormat.toUpperCase()}!`,
+        { id: 'conversion' }
+      );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred during conversion');
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred during conversion';
+      toast.error(errorMessage, { id: 'conversion' });
+      setError(errorMessage);
     } finally {
       setIsConverting(false);
     }
@@ -188,8 +198,8 @@ export default function ImageConverter() {
         {/* Footer */}
         <footer className="mt-16 pt-8 border-t text-center text-sm text-muted-foreground">
           <p>
-            Supports JPEG, PNG, GIF, BMP, TIFF, and WebP input formats. 
-            Maximum file size: 10MB each.
+            Supports JPEG, JPG, PNG input formats only.
+            Maximum file size: 50MB each.
           </p>
         </footer>
       </div>

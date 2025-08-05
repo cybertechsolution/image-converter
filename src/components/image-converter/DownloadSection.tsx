@@ -16,16 +16,16 @@ export default function DownloadSection({
   fileCount
 }: DownloadSectionProps) {
   const getDownloadFileName = () => {
-    // For multiple files, always use ZIP filename
+    // For multiple files, use ZIP filename
     if (fileCount > 1) {
       return 'converted_images.zip';
     }
 
-    // For single file, use original logic but still ZIP format since API always returns ZIP
-    if (!originalFileName) return `converted.zip`;
+    // For single file, use the converted format extension
+    if (!originalFileName) return `converted.${selectedFormat}`;
 
     const nameWithoutExtension = originalFileName.replace(/\.[^/.]+$/, '');
-    return `${nameWithoutExtension}.zip`;
+    return `${nameWithoutExtension}.${selectedFormat}`;
   };
 
   if (isConverting) {
